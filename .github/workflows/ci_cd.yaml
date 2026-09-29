@@ -1,0 +1,51 @@
+name: ci_cd_flow
+
+on:
+  workflow_dispatch:
+    inputs:
+      aws_ip:
+        description: "Enter AWS IP"
+        required: true
+        type: string
+      user_info:
+        description: "Enter AWS User name"
+        required: true
+        type: string
+        default: ubuntu
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: muthukdnl/chgpt_project:${{ github.run_number }}
+
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PRIVTEKEY }}" > ~/.ssh/ec2_key
+          chmod 600 ~/.ssh/ec2_key
+
+      - name: Deploy
+        run: |
+            ssh -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no ${{ inputs.user_info }}@${{ inputs.aws_ip }} "
+                sudo docker stop webserver || true && \
+                 sudo docker rm webserver || true && \
+                sudo docker run -d --name webserver -p 80:80 muthukdnl/chgpt_project:${{ github.run_number }}
+                 "
