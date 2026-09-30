@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  python_app:   
+    image: muthukdnl/chgpt_project:${RUN_NUMBER}
+    container_name: app
+    restart: always
+
+  nginx:
+    image: muthukdnl/rev_pro:${RUN_NUMBER}
+    container_name: nginx    
+    ports:
+      - "80:80"    
+    restart: always
+    depends_on:
+      - python_app
+
+  db:
+    image: muthukdnl/rl_db:${RUN_NUMBER}
+    container_name: db
+    restart: always
