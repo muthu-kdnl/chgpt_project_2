@@ -14,9 +14,8 @@ on:
         default: ubuntu
 
 jobs:
-  deploy:
+  build_push_app:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,25 +26,79 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Build and Push Docker Image
+      - name: Build and Push App Image
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: ./Dockerfile
+          context: ./python_app
+          file: ./python_app/Dockerfile
           push: true
           tags: muthukdnl/chgpt_project:${{ github.run_number }}
 
+  build_push_nginx:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build and Push Nginx Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./nginx_app
+          file: ./nginx_app/Dockerfile
+          push: true
+          tags: muthukdnl/rev_pro:${{ github.run_number }}
+
+  build_push_db:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build and Push Nginx Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./db
+          file: ./db/Dockerfile
+          push: true
+          tags: muthukdnl/rl_db:${{ github.run_number }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build_push_app, build_push_nginx , build_push_db ] 
+    steps:
       - name: Configure SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.PRIVTEKEY }}" > ~/.ssh/ec2_key
           chmod 600 ~/.ssh/ec2_key
 
-      - name: Deploy
+      - name: Deploy to AWS EC2
         run: |
-            ssh -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no ${{ inputs.user_info }}@${{ inputs.aws_ip }} "
-                sudo docker stop webserver || true && \
-                 sudo docker rm webserver || true && \
-                sudo docker run -d --name webserver -p 80:80 muthukdnl/chgpt_project:${{ github.run_number }}
-                 "
+          ssh -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no ${{ inputs.user_info }}@${{ inputs.aws_ip }} "
+            # Create network if it doesn't exist
+            sudo docker network create app_network || true
+            
+            # Stop and remove old containers safely
+            sudo docker rm -f app nginx || true
+            
+            # Run Application container (Port 5000)
+            sudo docker run -d --name app --network app_network muthukdnl/chgpt_project:${{ github.run_number }}
+            
+            # Run Nginx container (Port 80 mapped to internal Nginx config)
+            sudo docker run -d --name nginx -p 80:80 --network app_network muthukdnl/rev_pro:${{ github.run_number }}
+
+            sudo docker run -d --name db --network app_network muthukdnl/rl_db:${{ github.run_number }}
+
+          "
