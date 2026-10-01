@@ -1,17 +1,13 @@
 name: ci_cd_flow
 
 on:
-  workflow_dispatch:
-    inputs:
-      aws_ip:
-        description: "Enter AWS IP"
-        required: true
-        type: string
-      user_info:
-        description: "Enter AWS User name"
-        required: true
-        type: string
-        default: ubuntu
+  push:
+    branches:
+      - main
+
+env:
+  aws_ip: "54.172.75.14"
+  user_info: "ubuntu"
 
 jobs:
   build_push_app:
@@ -96,7 +92,7 @@ jobs:
 
       - name: Create Remote Directory
         run: |
-          ssh -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no ${{ inputs.user_info }}@${{ inputs.aws_ip }} "mkdir -p ~/app"
+          ssh -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no ${{ env.user_info }}@${{ env.aws_ip }} "mkdir -p ~/app"
       
       - name: Create Env File
         run: |
@@ -104,12 +100,12 @@ jobs:
       
       - name: Copy Files to EC2
         run: |
-          scp -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no Dockercompose.yaml ${{ inputs.user_info }}@${{ inputs.aws_ip }}:~/app/docker-compose.yml
-          scp -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no .env ${{ inputs.user_info }}@${{ inputs.aws_ip }}:~/app/.env
+          scp -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no Dockercompose.yaml ${{ env.user_info }}@${{ env.aws_ip }}:~/app/docker-compose.yml
+          scp -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no .env ${{ env.user_info }}@${{ env.aws_ip }}:~/app/.env
       
       - name: Execute Docker Compose on EC2
         run: |
-          ssh -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no ${{ inputs.user_info }}@${{ inputs.aws_ip }} "
+          ssh -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no ${{ env.user_info }}@${{ env.aws_ip }} "
             cd ~/app
             sudo docker compose pull
             sudo docker compose up -d --remove-orphans
