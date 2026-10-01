@@ -90,19 +90,16 @@ jobs:
       - name: Create Remote Directory
         run: |
           ssh -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no ${{ inputs.user_info }}@${{ inputs.aws_ip }} "mkdir -p ~/app"
-
-      # 1. Create a local .env file containing the real tag variable
+      
       - name: Create Env File
         run: |
           echo "RUN_NUMBER=${{ github.run_number }}" > .env
-
-      # 2. Copy BOTH the Compose file and the .env file to the EC2 server
+      
       - name: Copy Files to EC2
         run: |
           scp -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no Dockercompose.yaml ${{ inputs.user_info }}@${{ inputs.aws_ip }}:~/app/docker-compose.yml
           scp -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no .env ${{ inputs.user_info }}@${{ inputs.aws_ip }}:~/app/.env
-
-      # 3. Docker Compose automatically reads the local .env file
+      
       - name: Execute Docker Compose on EC2
         run: |
           ssh -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no ${{ inputs.user_info }}@${{ inputs.aws_ip }} "

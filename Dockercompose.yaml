@@ -5,6 +5,12 @@ services:
     image: muthukdnl/chgpt_project:${RUN_NUMBER}
     container_name: app
     restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
 
   nginx:
     image: muthukdnl/rev_pro:${RUN_NUMBER}
@@ -19,3 +25,8 @@ services:
     image: muthukdnl/rl_db:${RUN_NUMBER}
     container_name: db
     restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
